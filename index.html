@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Web App</title>
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f0f2f5;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* হেডার স্টাইল */
+        header {
+            background-color: #0088cc;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        /* মেইন কন্টেন্ট এরিয়া */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            padding-bottom: 80px;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .active {
+            display: block;
+        }
+
+        /* কার্ড স্টাইল */
+        .card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        /* ভিডিও বাটন স্টাইল */
+        .video-btn {
+            background: #ff0000;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            width: 100%;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        /* নেভিগেশন বার */
+        nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background: #ffffff;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            border-top: 1px solid #ddd;
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.05);
+        }
+
+        nav button {
+            background: none;
+            border: none;
+            font-size: 14px;
+            color: #666;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        nav button.active-nav {
+            color: #0088cc;
+            font-weight: bold;
+        }
+
+        /* ইনপুট স্টাইল */
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .btn-withdraw {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px;
+            width: 100%;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <header id="header-title">টেলিগ্রাম অ্যাপ</header>
+
+    <div class="content">
+        <!-- Work Section -->
+        <div id="work" class="page active">
+            <h3>ভিডিও দেখে আয় করুন</h3>
+            <div class="card">
+                <p>ডেমো ভিডিও ১ (১০ পয়েন্ট)</p>
+                <button class="video-btn" onclick="watchVideo(10)">ভিডিও দেখুন</button>
+            </div>
+            <div class="card">
+                <p>ডেমো ভিডিও ২ (২০ পয়েন্ট)</p>
+                <button class="video-btn" onclick="watchVideo(20)">ভিডিও দেখুন</button>
+            </div>
+            <div id="video-player" style="display:none; margin-top:20px;">
+                 <iframe width="100%" height="200" src="https://www.youtube.com/embed/dQw4w9WgXcQ" frameborder="0" allowfullscreen></iframe>
+                 <button onclick="closeVideo()" style="margin-top:10px; width:100%; padding:5px;">বন্ধ করুন</button>
+            </div>
+        </div>
+
+        <!-- Profile Section -->
+        <div id="profile" class="page">
+            <h3>আপনার প্রোফাইল</h3>
+            <div class="card">
+                <p><strong>নাম:</strong> <span id="user-name">Loading...</span></p>
+                <p><strong>ইউজার আইডি:</strong> <span id="user-id">Loading...</span></p>
+                <p><strong>ইউজারনেম:</strong> @<span id="username">None</span></p>
+            </div>
+            <div class="card">
+                <p><strong>আপনার ব্যালেন্স:</strong> <span id="balance">0</span> পয়েন্ট</p>
+            </div>
+        </div>
+
+        <!-- Withdraw Section -->
+        <div id="withdraw" class="page">
+            <h3>টাকা উত্তোলন</h3>
+            <div class="card">
+                <p>বর্তমান ব্যালেন্স: <span id="withdraw-balance">0</span> পয়েন্ট</p>
+                <input type="number" id="amount" placeholder="পরিমাণ লিখুন">
+                <input type="text" placeholder="বিকাশ/নগদ নম্বর">
+                <button class="btn-withdraw" onclick="processWithdraw()">উইথড্র রিকোয়েস্ট পাঠান</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav>
+        <button id="nav-work" onclick="showPage('work', 'nav-work')" class="active-nav">Work</button>
+        <button id="nav-profile" onclick="showPage('profile', 'nav-profile')">Profile</button>
+        <button id="nav-withdraw" onclick="showPage('withdraw', 'nav-withdraw')">Withdraw</button>
+    </nav>
+
+    <script>
+        // Telegram Web App Initialization
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // অ্যাপটি বড় করে ওপেন হবে
+
+        // LocalStorage থেকে ডাটা লোড করা
+        let balance = localStorage.getItem('balance') ? parseInt(localStorage.getItem('balance')) : 0;
+
+        function updateBalanceUI() {
+            document.getElementById('balance').innerText = balance;
+            document.getElementById('withdraw-balance').innerText = balance;
+        }
+
+        // টেলিগ্রাম ইউজার ডাটা কালেক্ট করা
+        function loadUserData() {
+            const user = tg.initDataUnsafe?.user;
+            if (user) {
+                document.getElementById('user-name').innerText = user.first_name + (user.last_name ? " " + user.last_name : "");
+                document.getElementById('user-id').innerText = user.id;
+                document.getElementById('username').innerText = user.username || "নেই";
+            } else {
+                document.getElementById('user-name').innerText = "ব্রাউজার ইউজার";
+                document.getElementById('user-id').innerText = "12345678";
+            }
+            updateBalanceUI();
+        }
+
+        // পেজ পরিবর্তন করার ফাংশন
+        function showPage(pageId, navId) {
+            // সব পেজ হাইড করা
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            // সব নব বাটন ডি-অ্যাক্টিভ করা
+            document.querySelectorAll('nav button').forEach(b => b.classList.remove('active-nav'));
+
+            // নির্দিষ্ট পেজ ও বাটন অ্যাক্টিভ করা
+            document.getElementById(pageId).classList.add('active');
+            document.getElementById(navId).classList.add('active-nav');
+            
+            // হেডার টাইটেল আপডেট
+            document.getElementById('header-title').innerText = pageId.charAt(0).toUpperCase() + pageId.slice(1);
+        }
+
+        // ভিডিও দেখার লজিক
+        function watchVideo(points) {
+            document.getElementById('video-player').style.display = 'block';
+            alert("ভিডিওটি শেষ পর্যন্ত দেখুন।");
+            
+            // ডেমো হিসেবে ভিডিও দেখার পর পয়েন্ট যোগ
+            setTimeout(() => {
+                balance += points;
+                localStorage.setItem('balance', balance);
+                updateBalanceUI();
+                tg.showAlert(`অভিনন্দন! আপনি ${points} পয়েন্ট পেয়েছেন।`);
+            }, 5000); // ৫ সেকেন্ড পর পয়েন্ট যোগ হবে
+        }
+
+        function closeVideo() {
+            document.getElementById('video-player').style.display = 'none';
+        }
+
+        // উইথড্র লজিক
+        function processWithdraw() {
+            const amount = document.getElementById('amount').value;
+            if (amount > balance) {
+                tg.showAlert("আপনার পর্যাপ্ত ব্যালেন্স নেই!");
+            } else if (amount < 100) {
+                tg.showAlert("নূন্যতম ১০০ পয়েন্ট লাগবে।");
+            } else {
+                balance -= amount;
+                localStorage.setItem('balance', balance);
+                updateBalanceUI();
+                tg.showAlert("উইথড্র রিকোয়েস্ট সফল হয়েছে!");
+            }
+        }
+
+        // শুরুতে ইউজার ডাটা লোড করা
+        loadUserData();
+    </script>
+</body>
+</html>
